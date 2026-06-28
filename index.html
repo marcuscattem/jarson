@@ -1,139 +1,952 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>COLETA DE DADOS</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <header class="topbar">
-      <h1>COLETA DE DADOS</h1>
-    </header>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>COLETA DE DADOS</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --card: #ffffff;
+      --ink: #17231f;
+      --muted: #60706a;
+      --line: #d8dfdb;
+      --header: #102f3a;
+      --primary: #155f75;
+      --primary-dark: #0f4658;
+      --teal: #4dc4a8;
+      --ok-bg: #e7f5ed;
+      --ok: #14694a;
+      --warn-bg: #fff2c7;
+      --warn: #8a6200;
+      --bad-bg: #ffe7e3;
+      --bad: #b42318;
+      --empty-bg: #edf1ef;
+    }
 
-    <main class="collection">
-      <section class="card participant-card" aria-labelledby="participant-title">
-        <div class="section-heading">
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      width: min(430px, 100%);
+      height: 100dvh;
+      margin: 0 auto;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    header {
+      flex: 0 0 auto;
+      background: var(--header);
+      color: #fff;
+      padding: 14px 16px 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.18);
+    }
+
+    .progress-track {
+      height: 3px;
+      margin-bottom: 12px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.14);
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--teal);
+      transition: width .25s ease;
+    }
+
+    .segments {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+
+    .segment {
+      flex: 1;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.13);
+    }
+
+    .segment.active { background: var(--teal); }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .back {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border: 1.5px solid rgba(255,255,255,.2);
+      border-radius: 10px;
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .step-label {
+      margin-bottom: 2px;
+      color: rgba(255,255,255,.48);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      overflow: hidden;
+      color: #fff;
+      font-size: 21px;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    main {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    footer {
+      flex: 0 0 auto;
+      padding: 12px 16px 16px;
+      border-top: 1px solid #dce5e0;
+      background: var(--bg);
+    }
+
+    .card {
+      margin-bottom: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #f4f8f6;
+      color: #4a6a5e;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+    }
+
+    .unit {
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.06);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f4f2;
+    }
+
+    .field-row:last-child { border-bottom: 0; }
+
+    .field-row label, .field-copy {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .field-title {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .field-sub {
+      margin-top: 2px;
+      color: #91a29b;
+      font-size: 11px;
+    }
+
+    .text-field, .measure-input {
+      width: 100%;
+      min-height: 48px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: #f9fbfa;
+      color: var(--ink);
+      padding: 0 14px;
+      font-size: 16px;
+    }
+
+    .measure-input {
+      flex: 0 0 auto;
+      width: 88px;
+      min-height: 44px;
+      padding: 10px 12px;
+      text-align: right;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .hint {
+      padding: 4px 2px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .grid-2 > div:first-child { border-right: 1px solid #f0f4f2; }
+
+    .pad { padding: 14px 16px; }
+
+    .small-label {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pmb-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .pmb {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+
+    .pmb span {
+      display: block;
+      color: #91a29b;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+    }
+
+    .pmb strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--header);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .status {
+      flex: 0 0 auto;
+      padding: 5px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ok { background: var(--ok-bg); color: var(--ok); }
+    .bad { background: var(--bad-bg); color: var(--bad); }
+    .warn { background: var(--warn-bg); color: var(--warn); }
+    .empty { background: var(--empty-bg); color: var(--muted); }
+
+    .checkbox-card {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      padding: 14px;
+      border: 1px solid #e8c96d;
+      border-radius: 12px;
+      background: #fff5d6;
+      color: var(--warn);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .checkbox-card input {
+      width: 20px;
+      height: 20px;
+      margin-top: 1px;
+      accent-color: #c28000;
+    }
+
+    .download-card {
+      margin-bottom: 12px;
+      padding: 14px;
+      border: 1px solid #b9d6df;
+      border-radius: 12px;
+      background: #eaf5f8;
+      color: var(--primary-dark);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .download-card a {
+      color: var(--primary-dark);
+      font-weight: 900;
+    }
+
+    .primary, .secondary {
+      display: block;
+      width: 100%;
+      min-height: 52px;
+      border-radius: 13px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .primary {
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .secondary {
+      min-height: 44px;
+      margin-top: 8px;
+      border: 1.5px solid #d0d9d4;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .secondary-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .secondary-row .secondary { margin-top: 0; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header id="appHeader"></header>
+    <main id="appMain"></main>
+    <footer id="appFooter"></footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "coleta_dados_avaliacoes_v3";
+    const STEPS = ["Identificação", "Medida 1", "Medida 2", "Medida 3", "Resultados"];
+    const PERIM = [
+      { key: "arm_lohman", label: "Perímetro de braço - Lohman", protocol: "Lohman", unit: "cm", type: "perimeter" },
+      { key: "arm_isak", label: "Perímetro de braço - ISAK", protocol: "ISAK", unit: "cm", type: "perimeter" },
+      { key: "waist", label: "Perímetro da cintura", protocol: "Geral", unit: "cm", type: "perimeter" },
+      { key: "abdomen", label: "Perímetro abdominal", protocol: "Geral", unit: "cm", type: "perimeter" },
+      { key: "hip", label: "Perímetro do quadril", protocol: "Geral", unit: "cm", type: "perimeter" },
+      { key: "calf", label: "Perímetro da panturrilha", protocol: "Geral", unit: "cm", type: "perimeter" }
+    ];
+    const SKIN = [
+      { key: "triceps_lohman", label: "Dobra cutânea tricipital - Lohman", protocol: "Lohman", unit: "mm", type: "skinfold" },
+      { key: "triceps_isak", label: "Dobra cutânea tricipital - ISAK", protocol: "ISAK", unit: "mm", type: "skinfold" }
+    ];
+    const ALL = [...PERIM, ...SKIN];
+    const BASE_HEADERS = ["participante", "avaliador", "data", "salvo_em", "limite_etm_perimetros_%", "limite_etm_dobras_%", "pmb_lohman_cm", "pmb_isak_cm", "finalizado_com_etm_fora_alvo"];
+    const MEASURE_HEADERS = ALL.flatMap(def => [
+      `${def.key}_medida_1_${def.unit}`,
+      `${def.key}_medida_2_${def.unit}`,
+      `${def.key}_medida_3_${def.unit}`,
+      `${def.key}_media_${def.unit}`,
+      `${def.key}_etm_${def.unit}`,
+      `${def.key}_etm_%`,
+      `${def.key}_status`
+    ]);
+    const HEADERS = [...BASE_HEADERS, ...MEASURE_HEADERS];
+
+    const state = {
+      step: 0,
+      participant: "",
+      evaluator: "",
+      date: new Date().toISOString().slice(0, 10),
+      targetPerimeter: "1.0",
+      targetSkinfold: "5.0",
+      overrideOutOfTarget: false,
+      downloadReady: false,
+      downloadUrl: "",
+      downloadFilename: "",
+      measures: Object.fromEntries(ALL.map(def => [def.key, { m1: "", m2: "", m3: "" }]))
+    };
+
+    function parseNumber(value) {
+      const normalized = String(value ?? "").trim().replace(",", ".");
+      if (!normalized) return null;
+      const number = Number(normalized);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function fmt(value, digits = 2) {
+      if (value === null || value === undefined || Number.isNaN(value)) return "-";
+      return Number(value).toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+
+    function mean(values) {
+      return values.reduce((total, value) => total + value, 0) / values.length;
+    }
+
+    function sampleSd(values) {
+      if (values.length < 2) return null;
+      const avg = mean(values);
+      const variance = values.reduce((total, value) => total + (value - avg) ** 2, 0) / (values.length - 1);
+      return Math.sqrt(variance);
+    }
+
+    function targetFor(def) {
+      return parseNumber(def.type === "skinfold" ? state.targetSkinfold : state.targetPerimeter) ?? (def.type === "skinfold" ? 5 : 1);
+    }
+
+    function valuesFor(key) {
+      const raw = state.measures[key];
+      return ["m1", "m2", "m3"].map(round => parseNumber(raw[round])).filter(value => value !== null);
+    }
+
+    function calcEtm(def) {
+      const vals = valuesFor(def.key);
+      if (!vals.length) return { def, status: "empty" };
+      if (vals.length === 1) return { def, status: "partial" };
+      const avg = mean(vals);
+      const etm = vals.length === 2 ? Math.sqrt(((vals[0] - vals[1]) ** 2) / 2) : sampleSd(vals);
+      const etmPct = avg !== 0 ? (etm / Math.abs(avg)) * 100 : null;
+      const target = targetFor(def);
+      const ok = etmPct !== null && etmPct <= target;
+      return { def, status: ok ? "ok" : "bad", avg, etm, etmPct, target, label: ok ? "Dentro do alvo" : "Fora do alvo" };
+    }
+
+    function avgPair(key) {
+      const vals = valuesFor(key);
+      return vals.length ? mean(vals) : null;
+    }
+
+    function calcPmb(protocol) {
+      const armKey = protocol === "Lohman" ? "arm_lohman" : "arm_isak";
+      const skinKey = protocol === "Lohman" ? "triceps_lohman" : "triceps_isak";
+      const arm = avgPair(armKey);
+      const skinMm = avgPair(skinKey);
+      if (arm === null || skinMm === null) return null;
+      return arm - Math.PI * (skinMm / 10);
+    }
+
+    function results() {
+      return ALL.map(calcEtm);
+    }
+
+    function hasPairs() {
+      return results().some(item => item.status === "ok" || item.status === "bad");
+    }
+
+    function hasBad() {
+      return results().some(item => item.status === "bad");
+    }
+
+    function cacheRows() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setCacheRows(rows) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    }
+
+    function currentRow() {
+      const row = {
+        participante: state.participant,
+        avaliador: state.evaluator,
+        data: state.date,
+        salvo_em: new Date().toISOString(),
+        "limite_etm_perimetros_%": parseNumber(state.targetPerimeter) ?? "",
+        "limite_etm_dobras_%": parseNumber(state.targetSkinfold) ?? "",
+        pmb_lohman_cm: calcPmb("Lohman") ?? "",
+        pmb_isak_cm: calcPmb("ISAK") ?? "",
+        finalizado_com_etm_fora_alvo: hasBad() ? (state.overrideOutOfTarget ? "sim" : "nao") : "nao"
+      };
+
+      results().forEach(item => {
+        const def = item.def;
+        const vals = state.measures[def.key];
+        row[`${def.key}_medida_1_${def.unit}`] = vals.m1;
+        row[`${def.key}_medida_2_${def.unit}`] = vals.m2;
+        row[`${def.key}_medida_3_${def.unit}`] = vals.m3;
+        row[`${def.key}_media_${def.unit}`] = item.avg ?? "";
+        row[`${def.key}_etm_${def.unit}`] = item.etm ?? "";
+        row[`${def.key}_etm_%`] = item.etmPct ?? "";
+        row[`${def.key}_status`] = item.status === "empty" ? "Sem dados" : item.status === "partial" ? "Par incompleto" : item.label;
+      });
+
+      return row;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    }
+
+    function render() {
+      renderHeader();
+      renderMain();
+      renderFooter();
+    }
+
+    function renderHeader() {
+      const pct = Math.round((state.step / (STEPS.length - 1)) * 100);
+      document.getElementById("appHeader").innerHTML = `
+        <div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div>
+        <div class="segments">${STEPS.map((_, index) => `<div class="segment ${index <= state.step ? "active" : ""}"></div>`).join("")}</div>
+        <div class="title-row">
+          ${state.step > 0 ? '<button class="back" type="button" data-action="back" aria-label="Voltar">‹</button>' : ""}
           <div>
-            <p class="eyebrow">Identificação</p>
-            <h2 id="participant-title">Rodada de avaliação</h2>
+            <div class="step-label">Etapa ${state.step + 1} de ${STEPS.length}</div>
+            <h1>${escapeHtml(STEPS[state.step] === "Identificação" ? "COLETA DE DADOS" : STEPS[state.step])}</h1>
           </div>
-          <span class="status-chip neutral" id="completionStatus">Aguardando dados</span>
         </div>
+      `;
+    }
 
-        <div class="settings-grid">
-          <label>
-            Participante
-            <input id="participant" type="text" autocomplete="off" placeholder="Ex.: P01">
+    function renderMain() {
+      const main = document.getElementById("appMain");
+      if (state.step === 0) main.innerHTML = renderIdentification();
+      else if (state.step === 1) main.innerHTML = renderMeasure("m1");
+      else if (state.step === 2) main.innerHTML = renderMeasure("m2");
+      else if (state.step === 3) main.innerHTML = renderMeasure("m3");
+      else main.innerHTML = renderResults();
+    }
+
+    function renderIdentification() {
+      const todayCount = cacheRows().filter(row => row.data === state.date).length;
+      return `
+        <section class="card">
+          <div class="card-head">Participante & avaliador</div>
+          <div class="pad">
+            <div class="small-label">Participante</div>
+            <input class="text-field" data-field="participant" value="${escapeHtml(state.participant)}" placeholder="Ex.: P01">
+          </div>
+          <div class="pad">
+            <div class="small-label">Avaliador</div>
+            <input class="text-field" data-field="evaluator" value="${escapeHtml(state.evaluator)}" placeholder="Ex.: Nome">
+          </div>
+          <div class="pad">
+            <div class="small-label">Data da avaliação</div>
+            <input class="text-field" type="date" data-field="date" value="${escapeHtml(state.date)}">
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">Limites de ETM</div>
+          <div class="grid-2">
+            <div class="pad">
+              <div class="small-label">Perímetros (%)</div>
+              <input class="text-field" inputmode="decimal" data-field="targetPerimeter" value="${escapeHtml(state.targetPerimeter)}">
+            </div>
+            <div class="pad">
+              <div class="small-label">Dobras cutâneas (%)</div>
+              <input class="text-field" inputmode="decimal" data-field="targetSkinfold" value="${escapeHtml(state.targetSkinfold)}">
+            </div>
+          </div>
+        </section>
+        <section class="download-card">
+          Cache local da data selecionada: ${todayCount} avaliação(ões). Use o botão de compilação no final para gerar a planilha grande do dia.
+        </section>
+      `;
+    }
+
+    function renderMeasure(round) {
+      const num = round === "m1" ? 1 : round === "m2" ? 2 : 3;
+      return `
+        <div class="hint">Registre a ${num}ª medida. Campos vazios são permitidos e serão ignorados no cálculo.</div>
+        ${renderMeasureGroup(PERIM, "Perímetros corporais", "cm", round)}
+        ${renderMeasureGroup(SKIN, "Dobras cutâneas", "mm", round)}
+      `;
+    }
+
+    function renderMeasureGroup(defs, title, unit, round) {
+      return `
+        <section class="card">
+          <div class="card-head"><span>${title}</span><span class="unit">${unit}</span></div>
+          ${defs.map(def => `
+            <div class="field-row">
+              <label>
+                <div class="field-title">${escapeHtml(def.label)}</div>
+                <div class="field-sub">${escapeHtml(def.protocol)}</div>
+              </label>
+              <input class="measure-input" inputmode="decimal" data-measure="${def.key}" data-round="${round}" value="${escapeHtml(state.measures[def.key][round])}" placeholder="-">
+            </div>
+          `).join("")}
+        </section>
+      `;
+    }
+
+    function renderResults() {
+      const pmbL = calcPmb("Lohman");
+      const pmbI = calcPmb("ISAK");
+      const allResults = results();
+      const outOfTarget = allResults.some(item => item.status === "bad");
+      const importedNotice = state.importNotice ? `<section class="download-card">${escapeHtml(state.importNotice)}</section>` : "";
+      return `
+        <div class="pmb-grid">
+          <div class="pmb"><span>PMB · Lohman</span><strong>${fmt(pmbL)}</strong><div class="field-sub">cm</div></div>
+          <div class="pmb"><span>PMB · ISAK</span><strong>${fmt(pmbI)}</strong><div class="field-sub">cm</div></div>
+        </div>
+        <section class="card">
+          <div class="card-head">ETM por variável</div>
+          ${allResults.map(item => {
+            const cls = item.status === "ok" ? "ok" : item.status === "bad" ? "bad" : item.status === "partial" ? "warn" : "empty";
+            const txt = item.status === "empty" ? "Sem dados" : item.status === "partial" ? "Incompleto" : item.label;
+            return `
+              <div class="field-row">
+                <div class="field-copy">
+                  <div class="field-title">${escapeHtml(item.def.label)}</div>
+                  <div class="field-sub">${item.etm !== undefined ? `ETM ${fmt(item.etm)} ${item.def.unit} · ${fmt(item.etmPct)}%` : "-"}</div>
+                </div>
+                <span class="status ${cls}">${txt}</span>
+              </div>
+            `;
+          }).join("")}
+        </section>
+        ${outOfTarget ? `
+          <label class="checkbox-card">
+            <input type="checkbox" data-field="overrideOutOfTarget" ${state.overrideOutOfTarget ? "checked" : ""}>
+            <span>Finalizar mesmo com ETM fora do alvo</span>
           </label>
-          <label>
-            Avaliador
-            <input id="evaluator" type="text" autocomplete="off" placeholder="Ex.: Nome">
-          </label>
-          <label>
-            Data
-            <input id="collectionDate" type="date">
-          </label>
-          <label>
-            Limite ETM perímetros (%)
-            <input id="targetPerimeter" type="number" step="0.1" value="1.0">
-          </label>
-          <label>
-            Limite ETM dobras cutâneas (%)
-            <input id="targetSkinfold" type="number" step="0.1" value="5.0">
-          </label>
-        </div>
-      </section>
+        ` : ""}
+        ${state.downloadReady ? `
+          <section class="download-card">
+            Download iniciado. <a href="${state.downloadUrl}" download="${state.downloadFilename}">Baixar novamente</a>
+          </section>
+        ` : ""}
+        ${importedNotice}
+        <input id="xlsxInput" class="hidden" type="file" multiple accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      `;
+    }
 
-      <section class="step card active" id="measureOneSection" aria-labelledby="measure-one-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Etapa 1</p>
-            <h2 id="measure-one-title">Medida 1</h2>
-          </div>
-          <span class="step-number">1</span>
+    function renderFooter() {
+      const footer = document.getElementById("appFooter");
+      const isLast = state.step === STEPS.length - 1;
+      if (!isLast) {
+        footer.innerHTML = `<button class="primary" type="button" data-action="next">${state.step === 0 ? "Começar medida 1" : state.step === 3 ? "Ver resultados" : "Avançar"}</button>`;
+        return;
+      }
+      footer.innerHTML = `
+        <button class="primary" type="button" data-action="save">Salvar Excel do participante</button>
+        <div class="secondary-row">
+          <button class="secondary" type="button" data-action="compileCache">Compilar dia</button>
+          <button class="secondary" type="button" data-action="importExcel">Anexar Excel</button>
         </div>
-        <div class="measure-layout">
-          <div>
-            <h3>Perímetros corporais <span>cm</span></h3>
-            <div class="field-list" id="perimeterMeasureOne"></div>
-          </div>
-          <div class="skin-card">
-            <h3>Dobras cutâneas <span>mm</span></h3>
-            <div class="field-list" id="skinfoldMeasureOne"></div>
-          </div>
-        </div>
-        <div class="toolbar">
-          <button class="primary" type="button" id="goMeasureTwo">Avançar para medida 2</button>
-        </div>
-      </section>
+        <button class="secondary" type="button" data-action="clear">Limpar e reiniciar</button>
+      `;
+    }
 
-      <section class="step card" id="measureTwoSection" aria-labelledby="measure-two-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Etapa 2</p>
-            <h2 id="measure-two-title">Medida 2</h2>
-          </div>
-          <span class="step-number">2</span>
-        </div>
-        <div class="measure-layout">
-          <div>
-            <h3>Perímetros corporais <span>cm</span></h3>
-            <div class="field-list" id="perimeterMeasureTwo"></div>
-          </div>
-          <div class="skin-card">
-            <h3>Dobras cutâneas <span>mm</span></h3>
-            <div class="field-list" id="skinfoldMeasureTwo"></div>
-          </div>
-        </div>
-        <div class="toolbar">
-          <button class="primary" type="button" id="goResults">Ver resultados</button>
-        </div>
-      </section>
+    function bindRootEvents() {
+      document.addEventListener("input", event => {
+        const el = event.target;
+        if (el.dataset.field) {
+          if (el.dataset.field === "overrideOutOfTarget") state.overrideOutOfTarget = el.checked;
+          else state[el.dataset.field] = el.value;
+          render();
+        }
+        if (el.dataset.measure) {
+          state.measures[el.dataset.measure][el.dataset.round] = el.value;
+        }
+      });
 
-      <section class="step card" id="resultsSection" aria-labelledby="results-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Etapa 3</p>
-            <h2 id="results-title">ETM final</h2>
-          </div>
-          <span class="step-number">3</span>
-        </div>
+      document.addEventListener("click", event => {
+        const action = event.target.closest("[data-action]")?.dataset.action;
+        if (!action) return;
+        if (action === "back") goTo(state.step - 1);
+        if (action === "next") goTo(state.step + 1);
+        if (action === "save") saveCurrent();
+        if (action === "clear") clearAll();
+        if (action === "compileCache") compileCache();
+        if (action === "importExcel") document.getElementById("xlsxInput")?.click();
+      });
 
-        <div class="pmb-grid" id="muscleResults"></div>
+      document.addEventListener("change", event => {
+        if (event.target.id === "xlsxInput") importExcelFiles([...event.target.files]);
+      });
+    }
 
-        <div class="review-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Variável</th>
-                <th>Unidade</th>
-                <th>Medida 1</th>
-                <th>Medida 2</th>
-                <th>Diferença</th>
-                <th>ETM</th>
-                <th>ETM%</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="reviewRows"></tbody>
-          </table>
-        </div>
+    function goTo(step) {
+      state.step = Math.max(0, Math.min(STEPS.length - 1, step));
+      render();
+      document.getElementById("appMain").scrollTop = 0;
+    }
 
-        <label class="finalize-check" id="overrideBox">
-          <input id="overrideOutOfTarget" type="checkbox">
-          Finalizar a avaliação mesmo com ETM fora de alvo
-        </label>
+    function saveCurrent() {
+      if (!hasPairs()) {
+        alert("Preencha ao menos uma variável com duas ou mais medidas.");
+        return;
+      }
+      if (hasBad() && !state.overrideOutOfTarget) {
+        alert("Há ETM fora do alvo. Marque a caixa para finalizar mesmo assim.");
+        return;
+      }
+      const row = currentRow();
+      const cached = cacheRows();
+      cached.push(row);
+      setCacheRows(cached);
+      downloadRows(`coleta-${state.date}-${safeName(state.participant || "participante")}.xlsx`, [row]);
+      state.downloadReady = true;
+      render();
+    }
 
-        <div class="download-notice" id="downloadNotice" aria-live="polite"></div>
+    function compileCache() {
+      const rows = cacheRows().filter(row => row.data === state.date);
+      if (!rows.length) {
+        alert("Não há avaliações no cache para a data selecionada.");
+        return;
+      }
+      downloadRows(`coleta-compilada-${state.date}.xlsx`, rows);
+      state.downloadReady = true;
+      render();
+    }
 
-        <div class="toolbar sticky-actions">
-          <button class="primary" type="button" id="saveExcel">Salvar Excel</button>
-          <button type="button" id="clearAll">Limpar rodada</button>
-        </div>
-      </section>
-    </main>
+    async function importExcelFiles(files) {
+      if (!files.length) return;
+      try {
+        const rows = [];
+        for (const file of files) rows.push(...await readRowsFromXlsx(file));
+        if (!rows.length) {
+          alert("Nenhuma linha encontrada nos arquivos anexados.");
+          return;
+        }
+        downloadRows(`coleta-compilada-anexos-${new Date().toISOString().slice(0, 10)}.xlsx`, rows);
+        state.importNotice = `${rows.length} avaliação(ões) compilada(s) a partir dos Excel anexados.`;
+        state.downloadReady = true;
+        render();
+      } catch (error) {
+        alert(error.message || "Não foi possível ler o Excel anexado.");
+      }
+    }
 
-    <script src="script.js"></script>
-  </body>
+    function clearAll() {
+      state.step = 0;
+      state.participant = "";
+      state.evaluator = "";
+      state.date = new Date().toISOString().slice(0, 10);
+      state.targetPerimeter = "1.0";
+      state.targetSkinfold = "5.0";
+      state.overrideOutOfTarget = false;
+      state.downloadReady = false;
+      state.downloadUrl = "";
+      state.downloadFilename = "";
+      state.importNotice = "";
+      state.measures = Object.fromEntries(ALL.map(def => [def.key, { m1: "", m2: "", m3: "" }]));
+      render();
+    }
+
+    function safeName(value) {
+      return String(value).trim().replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "arquivo";
+    }
+
+    function downloadRows(filename, rows) {
+      const bytes = makeXlsx(HEADERS, rows.map(row => normalizeRow(row)));
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      state.downloadUrl = url;
+      state.downloadFilename = filename;
+    }
+
+    function normalizeRow(row) {
+      return Object.fromEntries(HEADERS.map(header => [header, row[header] ?? ""]));
+    }
+
+    function xmlEscape(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function colName(index) {
+      let name = "";
+      let value = index + 1;
+      while (value > 0) {
+        const remainder = (value - 1) % 26;
+        name = String.fromCharCode(65 + remainder) + name;
+        value = Math.floor((value - remainder) / 26);
+      }
+      return name;
+    }
+
+    function crc32(bytes) {
+      if (!crc32.table) {
+        crc32.table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          crc32.table[i] = c >>> 0;
+        }
+      }
+      let crc = 0xffffffff;
+      bytes.forEach(byte => { crc = crc32.table[(crc ^ byte) & 0xff] ^ (crc >>> 8); });
+      return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    function u32(array, value) {
+      array.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
+    }
+
+    function u16(array, value) {
+      array.push(value & 0xff, (value >>> 8) & 0xff);
+    }
+
+    function makeXlsx(headers, rows) {
+      const enc = new TextEncoder();
+      const allRows = [headers, ...rows.map(row => headers.map(header => row[header]))];
+      const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${allRows.map((row, ri) => `<row r="${ri + 1}">${row.map((val, ci) => {
+        const ref = `${colName(ci)}${ri + 1}`;
+        const number = typeof val === "number" && Number.isFinite(val);
+        return number ? `<c r="${ref}"><v>${val}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(val)}</t></is></c>`;
+      }).join("")}</row>`).join("")}</sheetData></worksheet>`;
+      const files = [
+        { name: "[Content_Types].xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>` },
+        { name: "_rels/.rels", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+        { name: "xl/workbook.xml", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Coleta" sheetId="1" r:id="rId1"/></sheets></workbook>` },
+        { name: "xl/_rels/workbook.xml.rels", content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>` },
+        { name: "xl/worksheets/sheet1.xml", content: sheet }
+      ];
+      const output = [];
+      const central = [];
+      let offset = 0;
+      files.forEach(file => {
+        const nameBytes = enc.encode(file.name);
+        const dataBytes = enc.encode(file.content);
+        const crc = crc32(dataBytes);
+        u32(output, 0x04034b50); u16(output, 20); u16(output, 0); u16(output, 0); u16(output, 0); u16(output, 0);
+        u32(output, crc); u32(output, dataBytes.length); u32(output, dataBytes.length); u16(output, nameBytes.length); u16(output, 0);
+        output.push(...nameBytes, ...dataBytes);
+        u32(central, 0x02014b50); u16(central, 20); u16(central, 20); u16(central, 0); u16(central, 0); u16(central, 0); u16(central, 0);
+        u32(central, crc); u32(central, dataBytes.length); u32(central, dataBytes.length); u16(central, nameBytes.length); u16(central, 0); u16(central, 0); u16(central, 0); u16(central, 0);
+        u32(central, 0); u32(central, offset); central.push(...nameBytes);
+        offset = output.length;
+      });
+      const centralOffset = output.length;
+      output.push(...central);
+      u32(output, 0x06054b50); u16(output, 0); u16(output, 0); u16(output, files.length); u16(output, files.length);
+      u32(output, central.length); u32(output, centralOffset); u16(output, 0);
+      return new Uint8Array(output);
+    }
+
+    async function readRowsFromXlsx(file) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const entries = unzipStoredEntries(bytes);
+      const sheetBytes = entries["xl/worksheets/sheet1.xml"];
+      if (!sheetBytes) throw new Error("O arquivo não parece ter sido gerado por esta ferramenta.");
+      const sharedStrings = entries["xl/sharedStrings.xml"] ? parseSharedStrings(textDecode(entries["xl/sharedStrings.xml"])) : [];
+      return parseSheet(textDecode(sheetBytes), sharedStrings);
+    }
+
+    function unzipStoredEntries(bytes) {
+      const entries = {};
+      const dec = new TextDecoder();
+      let offset = 0;
+      while (offset + 30 < bytes.length) {
+        const sig = readU32(bytes, offset);
+        if (sig !== 0x04034b50) break;
+        const method = readU16(bytes, offset + 8);
+        const compressedSize = readU32(bytes, offset + 18);
+        const filenameLength = readU16(bytes, offset + 26);
+        const extraLength = readU16(bytes, offset + 28);
+        const nameStart = offset + 30;
+        const dataStart = nameStart + filenameLength + extraLength;
+        const name = dec.decode(bytes.slice(nameStart, nameStart + filenameLength));
+        if (method !== 0) throw new Error("Anexe arquivos Excel baixados diretamente desta ferramenta, sem re-salvar no Excel.");
+        entries[name] = bytes.slice(dataStart, dataStart + compressedSize);
+        offset = dataStart + compressedSize;
+      }
+      return entries;
+    }
+
+    function readU16(bytes, offset) {
+      return bytes[offset] | (bytes[offset + 1] << 8);
+    }
+
+    function readU32(bytes, offset) {
+      return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+    }
+
+    function textDecode(bytes) {
+      return new TextDecoder().decode(bytes);
+    }
+
+    function parseSharedStrings(xml) {
+      const doc = new DOMParser().parseFromString(xml, "application/xml");
+      return [...doc.querySelectorAll("si")].map(si => si.textContent ?? "");
+    }
+
+    function parseSheet(xml, sharedStrings) {
+      const doc = new DOMParser().parseFromString(xml, "application/xml");
+      const rows = [...doc.querySelectorAll("sheetData row")].map(row => {
+        const values = [];
+        row.querySelectorAll("c").forEach(cell => {
+          const ref = cell.getAttribute("r") || "";
+          const col = columnIndex(ref.replace(/\d+/g, ""));
+          let value = "";
+          if (cell.getAttribute("t") === "inlineStr") value = cell.querySelector("is t")?.textContent ?? "";
+          else if (cell.getAttribute("t") === "s") value = sharedStrings[Number(cell.querySelector("v")?.textContent || 0)] ?? "";
+          else value = cell.querySelector("v")?.textContent ?? "";
+          values[col] = value;
+        });
+        return values;
+      });
+      const headers = rows.shift() || [];
+      return rows.map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+    }
+
+    function columnIndex(name) {
+      return [...name].reduce((total, char) => total * 26 + char.charCodeAt(0) - 64, 0) - 1;
+    }
+
+    bindRootEvents();
+    render();
+  </script>
+</body>
 </html>
