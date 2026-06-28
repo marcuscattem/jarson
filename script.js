@@ -1,23 +1,25 @@
-const variables = [
-  { key: "braco_relaxado", label: "Braço relaxado", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "braco_contraido", label: "Braço contraído", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "braco_isak", label: "Braço — ISAK", protocol: "ISAK", unit: "cm", type: "perimeter" },
-  { key: "braco_lohman", label: "Braço — Lohman", protocol: "Lohman", unit: "cm", type: "perimeter" },
-  { key: "cintura", label: "Cintura", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "abdomen", label: "Abdômen", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "quadril", label: "Quadril", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "panturrilha", label: "Panturrilha", protocol: "", unit: "cm", type: "perimeter" },
-  { key: "triceps", label: "Tríceps", protocol: "", unit: "mm", type: "skinfold" }
+const perimeterMeasures = [
+  { key: "arm_lohman", label: "Perímetro de braço - Lohman", protocol: "Lohman", unit: "cm", type: "perimeter" },
+  { key: "arm_isak", label: "Perímetro de braço - ISAK", protocol: "ISAK", unit: "cm", type: "perimeter" },
+  { key: "waist", label: "Perímetro da cintura", protocol: "", unit: "cm", type: "perimeter" },
+  { key: "abdomen", label: "Perímetro abdominal", protocol: "", unit: "cm", type: "perimeter" },
+  { key: "hip", label: "Perímetro do quadril", protocol: "", unit: "cm", type: "perimeter" },
+  { key: "calf", label: "Perímetro da panturrilha", protocol: "", unit: "cm", type: "perimeter" }
 ];
 
-let triplicateResults = [];
-let studyResults = [];
+const skinfoldMeasures = [
+  { key: "triceps_lohman", label: "Dobra cutânea tricipital - Lohman", protocol: "Lohman", unit: "mm", type: "skinfold" },
+  { key: "triceps_isak", label: "Dobra cutânea tricipital - ISAK", protocol: "ISAK", unit: "mm", type: "skinfold" }
+];
+
+const measures = [...perimeterMeasures, ...skinfoldMeasures];
+const state = Object.fromEntries(measures.map((measure) => [measure.key, { m1: "", m2: "" }]));
+let lastObjectUrl = "";
 
 const byId = (id) => document.getElementById(id);
 
 function parseNumber(value) {
-  if (value === null || value === undefined) return null;
-  const normalized = String(value).trim().replace(",", ".");
+  const normalized = String(value ?? "").trim().replace(",", ".");
   if (!normalized) return null;
   const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
@@ -35,573 +37,558 @@ function mean(values) {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
-function sampleSd(values, avg) {
-  if (values.length < 2) return 0;
-  const variance = values.reduce((total, value) => total + (value - avg) ** 2, 0) / (values.length - 1);
-  return Math.sqrt(variance);
+function targetFor(measure) {
+  const field = measure.type === "skinfold" ? "targetSkinfold" : "targetPerimeter";
+  return parseNumber(byId(field).value) ?? (measure.type === "skinfold" ? 5 : 1);
 }
 
-function getVariable(key) {
-  return variables.find((item) => item.key === key);
+function hasAnyMeasureOne() {
+  return measures.some((measure) => parseNumber(state[measure.key].m1) !== null);
 }
 
-function currentTriplicateLimits() {
-  return {
-    perimeterCv: parseNumber(byId("limitPerimeterCv").value) ?? 1,
-    perimeterAmp: parseNumber(byId("limitPerimeterAmp").value) ?? 0.5,
-    skinfoldCv: parseNumber(byId("limitSkinfoldCv").value) ?? 5,
-    skinfoldAmp: parseNumber(byId("limitSkinfoldAmp").value) ?? 2
-  };
+function hasAnyPairedMeasure() {
+  return measures.some((measure) => {
+    const values = state[measure.key];
+    return parseNumber(values.m1) !== null && parseNumber(values.m2) !== null;
+  });
 }
 
-function currentEtmLimits() {
-  return {
-    perimeter: parseNumber(byId("limitEtmPerimeter").value) ?? 1,
-    skinfold: parseNumber(byId("limitEtmSkinfold").value) ?? 5
-  };
+function renderInputs(containerId, list, round) {
+  byId(containerId).innerHTML = list.map((measure) => `
+    <label class="measure-field">
+      <span>
+        ${measure.label}
+        <small>${measure.protocol || "Protocolo geral"} · ${measure.unit}</small>
+      </span>
+      <input
+        inputmode="decimal"
+        autocomplete="off"
+        data-input="${measure.key}"
+        data-round="${round}"
+        aria-label="${measure.label}, medida ${round}">
+    </label>
+  `).join("");
 }
 
-function renderTabs() {
-  document.querySelectorAll(".tab").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
-      button.classList.add("active");
-      byId(button.dataset.tab).classList.add("active");
-      if (button.dataset.tab === "exportacao") updateSummary();
+function bindMeasureInputs() {
+  document.querySelectorAll("[data-input]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.input;
+      const round = input.dataset.round === "1" ? "m1" : "m2";
+      state[key][round] = input.value;
+      mirrorInputs(key, round, input.value, input);
+      if (round === "m1" && hasAnyMeasureOne()) revealMeasureTwo();
+      updateResults();
     });
   });
 }
 
-function renderTriplicateCards() {
-  byId("triplicateCards").innerHTML = variables.map((variable) => `
-    <article class="measure-card" data-card="${variable.key}">
-      <div>
-        <h3>${variable.label}</h3>
-        <div class="measure-meta">
-          <span>${variable.unit}</span>
-          <span>${variable.protocol || "Protocolo geral"}</span>
-        </div>
-      </div>
-      <div class="input-row">
-        <label>Medida 1<input inputmode="decimal" data-trip="${variable.key}" data-field="m1"></label>
-        <label>Medida 2<input inputmode="decimal" data-trip="${variable.key}" data-field="m2"></label>
-        <label>Medida 3<input inputmode="decimal" data-trip="${variable.key}" data-field="m3"></label>
-      </div>
-      <div class="optional-row">
-        <label>Ponto anatômico<input data-trip="${variable.key}" data-field="point"></label>
-        <label>Momento 1<input inputmode="decimal" data-trip="${variable.key}" data-field="t1"></label>
-        <label>Momento 2<input inputmode="decimal" data-trip="${variable.key}" data-field="t2"></label>
-      </div>
-      <div class="result-box" data-result="${variable.key}">Preencha duas ou três medidas para calcular.</div>
+function mirrorInputs(key, round, value, source) {
+  document.querySelectorAll(`[data-input="${key}"][data-round="${round === "m1" ? "1" : "2"}"]`).forEach((input) => {
+    if (input !== source) input.value = value;
+  });
+}
+
+function revealMeasureTwo() {
+  byId("measureTwoSection").classList.add("active");
+}
+
+function revealResults() {
+  byId("measureTwoSection").classList.add("active");
+  byId("resultsSection").classList.add("active");
+  updateResults();
+  byId("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function calculateEtm(measure) {
+  const m1 = parseNumber(state[measure.key].m1);
+  const m2 = parseNumber(state[measure.key].m2);
+  if (m1 === null && m2 === null) return { measure, status: "empty" };
+  if (m1 === null || m2 === null) return { measure, m1, m2, status: "partial" };
+
+  const difference = m1 - m2;
+  const etm = Math.sqrt((difference ** 2) / 2);
+  const avg = mean([m1, m2]);
+  const etmPct = avg !== 0 ? (etm / Math.abs(avg)) * 100 : null;
+  const target = targetFor(measure);
+  const ok = etmPct !== null && etmPct <= target;
+
+  return {
+    measure,
+    m1,
+    m2,
+    difference,
+    etm,
+    etmPct,
+    target,
+    status: ok ? "ok" : "bad",
+    classification: ok ? "Dentro do alvo" : "Fora do alvo"
+  };
+}
+
+function getResults() {
+  return measures.map(calculateEtm);
+}
+
+function meanPair(key) {
+  const values = state[key];
+  const parsed = [parseNumber(values.m1), parseNumber(values.m2)].filter((value) => value !== null);
+  return parsed.length ? mean(parsed) : null;
+}
+
+function calculateArmMuscle(protocol) {
+  const armKey = protocol === "Lohman" ? "arm_lohman" : "arm_isak";
+  const skinfoldKey = protocol === "Lohman" ? "triceps_lohman" : "triceps_isak";
+  const arm = meanPair(armKey);
+  const skinfoldMm = meanPair(skinfoldKey);
+  if (arm === null || skinfoldMm === null) return null;
+  return arm - Math.PI * (skinfoldMm / 10);
+}
+
+function renderMuscleResults() {
+  const lohman = calculateArmMuscle("Lohman");
+  const isak = calculateArmMuscle("ISAK");
+  byId("muscleResults").innerHTML = `
+    <article class="pmb-card">
+      <span>Perímetro muscular do braço - Lohman</span>
+      <strong>${formatNumber(lohman)} cm</strong>
+      <small>Perímetro de braço Lohman - π × dobra tricipital Lohman em cm</small>
     </article>
-  `).join("");
+    <article class="pmb-card">
+      <span>Perímetro muscular do braço - ISAK</span>
+      <strong>${formatNumber(isak)} cm</strong>
+      <small>Perímetro de braço ISAK - π × dobra tricipital ISAK em cm</small>
+    </article>
+  `;
 }
 
-function getTriplicateInput(variableKey, field) {
-  return document.querySelector(`[data-trip="${variableKey}"][data-field="${field}"]`);
-}
+function renderReviewRows(results) {
+  byId("reviewRows").innerHTML = results.map((result) => {
+    const measure = result.measure;
+    const statusClass = result.status === "ok" ? "ok" : result.status === "bad" ? "bad" : "warn";
+    const statusText = result.status === "empty"
+      ? "Sem dados"
+      : result.status === "partial"
+        ? "Par incompleto"
+        : result.classification;
 
-function clearDiscrepantMarks(variableKey) {
-  ["m1", "m2", "m3"].forEach((field) => getTriplicateInput(variableKey, field).classList.remove("discrepant"));
-}
-
-function matchingEtm(variable) {
-  const exact = studyResults.find((item) => item.variableKey === variable.key);
-  if (exact) return exact;
-  return studyResults.find((item) => item.variable === variable.label && item.protocol === variable.protocol);
-}
-
-function calculateTriplicates() {
-  const limits = currentTriplicateLimits();
-  const participant = byId("tripParticipant").value.trim();
-  triplicateResults = [];
-
-  variables.forEach((variable) => {
-    clearDiscrepantMarks(variable.key);
-    const raw = ["m1", "m2", "m3"].map((field) => getTriplicateInput(variable.key, field).value);
-    const measures = raw.map(parseNumber).filter((value) => value !== null);
-    const resultBox = document.querySelector(`[data-result="${variable.key}"]`);
-    const point = getTriplicateInput(variable.key, "point").value.trim();
-    const moment1 = parseNumber(getTriplicateInput(variable.key, "t1").value);
-    const moment2 = parseNumber(getTriplicateInput(variable.key, "t2").value);
-
-    if (measures.length === 0) {
-      resultBox.className = "result-box";
-      resultBox.textContent = "Sem medidas preenchidas.";
-      return;
-    }
-
-    if (measures.length === 1) {
-      resultBox.className = "result-box warn";
-      resultBox.textContent = "Informe ao menos duas medidas para avaliar a repetibilidade.";
-      return;
-    }
-
-    const avg = mean(measures);
-    const sd = sampleSd(measures, avg);
-    const cv = avg !== 0 ? (sd / Math.abs(avg)) * 100 : null;
-    const amplitude = Math.max(...measures) - Math.min(...measures);
-    const cvLimit = variable.type === "skinfold" ? limits.skinfoldCv : limits.perimeterCv;
-    const ampLimit = variable.type === "skinfold" ? limits.skinfoldAmp : limits.perimeterAmp;
-    const acceptable = cv !== null && cv <= cvLimit && amplitude <= ampLimit;
-    const onlyTwo = measures.length === 2;
-    const status = acceptable ? "Triplicata aceitável" : "Repetir medida ou revisar ponto anatômico";
-
-    raw.forEach((value, index) => {
-      const numeric = parseNumber(value);
-      if (numeric === null) return;
-      const isExtreme = amplitude > ampLimit && (numeric === Math.max(...measures) || numeric === Math.min(...measures));
-      const isFar = sd > 0 && Math.abs(numeric - avg) > 1.5 * sd;
-      if (isExtreme || isFar) getTriplicateInput(variable.key, `m${index + 1}`).classList.add("discrepant");
-    });
-
-    const longitudinal = interpretLongitudinal(moment1, moment2, variable, sd);
-    const row = {
-      module: "Triplicatas individuais",
-      participant,
-      variableKey: variable.key,
-      variable: variable.label,
-      protocol: variable.protocol,
-      unit: variable.unit,
-      point,
-      measures: raw,
-      mean: avg,
-      sd,
-      cv,
-      amplitude,
-      cvLimit,
-      ampLimit,
-      classification: status,
-      moment1,
-      moment2,
-      ...longitudinal
-    };
-    triplicateResults.push(row);
-
-    resultBox.className = `result-box ${acceptable ? "ok" : "bad"}`;
-    resultBox.innerHTML = `
-      <strong>${status}</strong><br>
-      Média: ${formatNumber(avg)} ${variable.unit} · DP: ${formatNumber(sd)} ${variable.unit}<br>
-      CV: ${formatNumber(cv)}% · Amplitude: ${formatNumber(amplitude)} ${variable.unit}<br>
-      ${onlyTwo ? "<span>Aviso: cálculo feito com duas medidas; três medidas são preferíveis.</span><br>" : ""}
-      ${longitudinal.interpretation ? `<span>${longitudinal.interpretation}</span>` : ""}
+    return `
+      <tr>
+        <td>${measure.label}</td>
+        <td>${measure.unit}</td>
+        <td><input inputmode="decimal" autocomplete="off" value="${state[measure.key].m1}" data-review="${measure.key}" data-review-round="m1"></td>
+        <td><input inputmode="decimal" autocomplete="off" value="${state[measure.key].m2}" data-review="${measure.key}" data-review-round="m2"></td>
+        <td>${result.difference === undefined ? "-" : `${formatNumber(result.difference)} ${measure.unit}`}</td>
+        <td>${result.etm === undefined ? "-" : `${formatNumber(result.etm)} ${measure.unit}`}</td>
+        <td>${result.etmPct === undefined || result.etmPct === null ? "-" : `${formatNumber(result.etmPct)}%`}</td>
+        <td><span class="status-cell ${statusClass}">${statusText}</span></td>
+      </tr>
     `;
-  });
+  }).join("");
 
-  updateSummary();
+  document.querySelectorAll("[data-review]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const key = input.dataset.review;
+      const round = input.dataset.reviewRound;
+      state[key][round] = input.value;
+      mirrorInputs(key, round, input.value, input);
+      updateResults();
+    });
+  });
 }
 
-function interpretLongitudinal(moment1, moment2, variable, fallbackSd) {
-  if (moment1 === null || moment2 === null) {
-    return { deltaAbs: null, deltaPct: null, interpretation: "" };
-  }
+function updateCompletionStatus(results) {
+  const paired = results.filter((result) => result.status === "ok" || result.status === "bad");
+  const outOfTarget = results.some((result) => result.status === "bad");
+  const partial = results.some((result) => result.status === "partial");
+  const status = byId("completionStatus");
+  const overrideBox = byId("overrideBox");
 
-  const deltaAbs = moment2 - moment1;
-  const deltaPct = moment1 !== 0 ? (deltaAbs / moment1) * 100 : null;
-  const etm = matchingEtm(variable);
-  const reference = etm ? etm.etm : fallbackSd;
-  let interpretation = "";
+  overrideBox.classList.toggle("visible", outOfTarget);
 
-  if (!reference || reference <= 0) {
-    interpretation = "Interpretação longitudinal indisponível: calcule o ETM clássico ou informe triplicatas variáveis.";
-  } else if (Math.abs(deltaAbs) <= reference) {
-    interpretation = etm
-      ? "Mudança compatível com erro técnico."
-      : "Interpretação provisória baseada na variabilidade da triplicata; recomenda-se calcular o ETM clássico do estudo. Mudança compatível com erro técnico.";
-  } else if (Math.abs(deltaAbs) <= 2 * reference) {
-    interpretation = etm
-      ? "Possível mudança real."
-      : "Interpretação provisória baseada na variabilidade da triplicata; recomenda-se calcular o ETM clássico do estudo. Possível mudança real.";
+  if (!paired.length && !partial) {
+    status.className = "status-chip neutral";
+    status.textContent = "Aguardando dados";
+  } else if (outOfTarget) {
+    status.className = "status-chip bad";
+    status.textContent = "ETM fora de alvo";
+  } else if (partial) {
+    status.className = "status-chip warn";
+    status.textContent = "Há pares incompletos";
   } else {
-    interpretation = etm
-      ? "Mudança provavelmente real."
-      : "Interpretação provisória baseada na variabilidade da triplicata; recomenda-se calcular o ETM clássico do estudo. Mudança provavelmente real.";
+    status.className = "status-chip ok";
+    status.textContent = "ETM dentro do alvo";
   }
-
-  return { deltaAbs, deltaPct, interpretation };
 }
 
-function addStudyRow(values = {}) {
-  const tbody = byId("studyRows");
-  const row = document.createElement("tr");
-  const selectedKey = values.variableKey || values.variable || "braco_relaxado";
-  const variable = getVariable(selectedKey) || variables.find((item) => item.label === selectedKey) || variables[0];
-  row.innerHTML = `
-    <td><input data-col="participant" value="${values.participant || ""}"></td>
-    <td>
-      <select data-col="variableKey">
-        ${variables.map((item) => `<option value="${item.key}" ${item.key === variable.key ? "selected" : ""}>${item.label}</option>`).join("")}
-      </select>
-    </td>
-    <td><input data-col="protocol" value="${values.protocol ?? variable.protocol}"></td>
-    <td><input inputmode="decimal" data-col="m1" value="${values.m1 || ""}"></td>
-    <td><input inputmode="decimal" data-col="m2" value="${values.m2 || ""}"></td>
-    <td>
-      <select data-col="unit">
-        <option value="cm" ${variable.unit === "cm" ? "selected" : ""}>cm</option>
-        <option value="mm" ${variable.unit === "mm" ? "selected" : ""}>mm</option>
-      </select>
-    </td>
-    <td><button class="remove-row" type="button" title="Remover linha">×</button></td>
-  `;
-  row.querySelector('[data-col="variableKey"]').addEventListener("change", (event) => {
-    const nextVariable = getVariable(event.target.value);
-    row.querySelector('[data-col="protocol"]').value = nextVariable.protocol;
-    row.querySelector('[data-col="unit"]').value = nextVariable.unit;
-  });
-  row.querySelector(".remove-row").addEventListener("click", () => row.remove());
-  tbody.appendChild(row);
+function updateResults() {
+  const active = document.activeElement;
+  const focusState = active?.dataset?.review
+    ? {
+        key: active.dataset.review,
+        round: active.dataset.reviewRound,
+        start: active.selectionStart,
+        end: active.selectionEnd
+      }
+    : null;
+  const results = getResults();
+  if (hasAnyPairedMeasure()) byId("resultsSection").classList.add("active");
+  renderMuscleResults();
+  renderReviewRows(results);
+  updateCompletionStatus(results);
+
+  if (focusState) {
+    const next = document.querySelector(`[data-review="${focusState.key}"][data-review-round="${focusState.round}"]`);
+    if (next) {
+      next.focus();
+      next.setSelectionRange(focusState.start, focusState.end);
+    }
+  }
 }
 
-function getStudyRows() {
-  return [...byId("studyRows").querySelectorAll("tr")].map((row) => {
-    const variableKey = row.querySelector('[data-col="variableKey"]').value;
-    const variable = getVariable(variableKey);
-    return {
-      participant: row.querySelector('[data-col="participant"]').value.trim(),
-      variableKey,
-      variable: variable.label,
-      type: variable.type,
-      protocol: row.querySelector('[data-col="protocol"]').value.trim(),
-      m1: parseNumber(row.querySelector('[data-col="m1"]').value),
-      m2: parseNumber(row.querySelector('[data-col="m2"]').value),
-      unit: row.querySelector('[data-col="unit"]').value
-    };
+function syncReviewInputs() {
+  measures.forEach((measure) => {
+    ["m1", "m2"].forEach((round) => {
+      document.querySelectorAll(`[data-review="${measure.key}"][data-review-round="${round}"]`).forEach((input) => {
+        input.value = state[measure.key][round];
+      });
+    });
   });
 }
 
-function calculateStudy() {
-  const rows = getStudyRows().filter((row) => row.m1 !== null && row.m2 !== null);
-  const groups = new Map();
-  const limits = currentEtmLimits();
+function buildRowsForExport() {
+  const meta = {
+    participante: byId("participant").value.trim(),
+    avaliador: byId("evaluator").value.trim(),
+    data: byId("collectionDate").value
+  };
 
-  rows.forEach((row) => {
-    const key = `${row.variableKey}|${row.protocol}|${row.unit}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
-  });
+  const measurementRows = getResults().map((result) => ({
+    ...meta,
+    tipo_linha: "medida",
+    variavel: result.measure.label,
+    protocolo: result.measure.protocol,
+    unidade: result.measure.unit,
+    medida_1: result.m1 ?? "",
+    medida_2: result.m2 ?? "",
+    diferenca: result.difference ?? "",
+    etm_absoluto: result.etm ?? "",
+    etm_percentual: result.etmPct ?? "",
+    alvo_etm_percentual: result.target ?? targetFor(result.measure),
+    status: result.status === "empty" ? "Sem dados" : result.status === "partial" ? "Par incompleto" : result.classification,
+    pmb_cm: ""
+  }));
 
-  studyResults = [...groups.values()].map((group) => {
-    const first = group[0];
-    const diffs = group.map((row) => row.m1 - row.m2);
-    const sumDiffSquared = diffs.reduce((total, diff) => total + diff ** 2, 0);
-    const etm = Math.sqrt(sumDiffSquared / (2 * group.length));
-    const allMeasures = group.flatMap((row) => [row.m1, row.m2]);
-    const generalMean = mean(allMeasures);
-    const etmPct = generalMean !== 0 ? (etm / Math.abs(generalMean)) * 100 : null;
-    const limit = first.type === "skinfold" ? limits.skinfold : limits.perimeter;
+  const muscleRows = [
+    ["Perímetro muscular do braço - Lohman", "Lohman", calculateArmMuscle("Lohman")],
+    ["Perímetro muscular do braço - ISAK", "ISAK", calculateArmMuscle("ISAK")]
+  ].map(([label, protocol, value]) => ({
+    ...meta,
+    tipo_linha: "calculo",
+    variavel: label,
+    protocolo: protocol,
+    unidade: "cm",
+    medida_1: "",
+    medida_2: "",
+    diferenca: "",
+    etm_absoluto: "",
+    etm_percentual: "",
+    alvo_etm_percentual: "",
+    status: value === null ? "Dados insuficientes" : "Calculado",
+    pmb_cm: value ?? ""
+  }));
 
-    return {
-      module: "ETM clássico do estudo",
-      variableKey: first.variableKey,
-      variable: first.variable,
-      protocol: first.protocol,
-      unit: first.unit,
-      n: group.length,
-      mean1: mean(group.map((row) => row.m1)),
-      mean2: mean(group.map((row) => row.m2)),
-      meanDiff: mean(diffs),
-      maxAbsDiff: Math.max(...diffs.map(Math.abs)),
-      etm,
-      etmPct,
-      limit,
-      classification: etmPct !== null && etmPct <= limit ? "aceitável" : "acima do recomendado"
-    };
-  });
-
-  renderStudyResults();
-  renderArmComparison();
-  updateSummary();
+  return [...measurementRows, ...muscleRows];
 }
 
-function renderStudyResults() {
-  const container = byId("studyResults");
-  if (!studyResults.length) {
-    container.innerHTML = '<div class="result-box warn">Preencha ao menos uma linha completa com medida 1 e medida 2.</div>';
+function saveExcel() {
+  updateResults();
+  const results = getResults();
+  const hasBad = results.some((result) => result.status === "bad");
+  const hasPairs = results.some((result) => result.status === "ok" || result.status === "bad");
+
+  if (!hasPairs) {
+    alert("Preencha pelo menos uma variável com medida 1 e medida 2 antes de salvar.");
     return;
   }
 
-  container.innerHTML = studyResults.map((result) => `
-    <article class="result-card">
-      <div class="section-heading">
-        <div>
-          <h3>${result.variable}${result.protocol ? ` · ${result.protocol}` : ""}</h3>
-          <p class="eyebrow">N = ${result.n} · ${result.unit}</p>
-        </div>
-        <div class="status-chip ${result.classification === "aceitável" ? "ok" : "bad"}">${result.classification}</div>
-      </div>
-      <div class="metrics">
-        ${metric("ETM absoluto", `${formatNumber(result.etm)} ${result.unit}`)}
-        ${metric("ETM relativo", `${formatNumber(result.etmPct)}%`)}
-        ${metric("Média medida 1", `${formatNumber(result.mean1)} ${result.unit}`)}
-        ${metric("Média medida 2", `${formatNumber(result.mean2)} ${result.unit}`)}
-        ${metric("Diferença média", `${formatNumber(result.meanDiff)} ${result.unit}`)}
-        ${metric("Maior diferença", `${formatNumber(result.maxAbsDiff)} ${result.unit}`)}
-      </div>
-    </article>
-  `).join("");
-}
-
-function metric(label, value) {
-  return `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`;
-}
-
-function renderArmComparison() {
-  const isak = studyResults.find((item) => item.variableKey === "braco_isak");
-  const lohman = studyResults.find((item) => item.variableKey === "braco_lohman");
-  const container = byId("armComparison");
-
-  if (!isak || !lohman) {
-    container.className = "comparison-empty";
-    container.textContent = "Calcule o ETM clássico com linhas de braço ISAK e braço Lohman para ver a comparação.";
+  if (hasBad && !byId("overrideOutOfTarget").checked) {
+    alert("Há ETM fora de alvo. Marque a caixa de finalização para salvar mesmo assim.");
     return;
   }
 
-  const winner = isak.etmPct === lohman.etmPct
-    ? "ETM relativo equivalente"
-    : isak.etmPct < lohman.etmPct
-      ? "ISAK apresentou menor ETM relativo"
-      : "Lohman apresentou menor ETM relativo";
-  const meanIsak = mean([isak.mean1, isak.mean2]);
-  const meanLohman = mean([lohman.mean1, lohman.mean2]);
-
-  container.className = "";
-  container.innerHTML = `
-    <article class="result-card">
-      <div class="section-heading">
-        <div>
-          <h3>Comparação ISAK vs Lohman</h3>
-          <p class="eyebrow">${winner}</p>
-        </div>
-        <div class="status-chip ok">${winner}</div>
-      </div>
-      <div class="metrics">
-        ${metric("Média ISAK", `${formatNumber(meanIsak)} cm`)}
-        ${metric("Média Lohman", `${formatNumber(meanLohman)} cm`)}
-        ${metric("Diferença média", `${formatNumber(meanIsak - meanLohman)} cm`)}
-        ${metric("ETM ISAK", `${formatNumber(isak.etm)} cm (${formatNumber(isak.etmPct)}%)`)}
-        ${metric("ETM Lohman", `${formatNumber(lohman.etm)} cm (${formatNumber(lohman.etmPct)}%)`)}
-      </div>
-    </article>
-  `;
+  const rows = buildRowsForExport();
+  const filename = `coleta-de-dados-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  downloadXlsx(filename, rows);
 }
 
-function escapeCsv(value) {
-  const text = value === null || value === undefined ? "" : String(value);
-  return /[",\n;]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+function escapeXml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
-function downloadText(filename, content, type) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
+function columnName(index) {
+  let name = "";
+  let value = index + 1;
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    value = Math.floor((value - remainder) / 26);
+  }
+  return name;
+}
+
+function sheetXml(headers, rows) {
+  const allRows = [headers, ...rows.map((row) => headers.map((header) => row[header]))];
+  const rowXml = allRows.map((row, rowIndex) => {
+    const cellXml = row.map((value, columnIndex) => {
+      const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
+      const number = typeof value === "number" && Number.isFinite(value);
+      if (number) return `<c r="${ref}"><v>${value}</v></c>`;
+      return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+    }).join("");
+    return `<row r="${rowIndex + 1}">${cellXml}</row>`;
+  }).join("");
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>${rowXml}</sheetData>
+</worksheet>`;
+}
+
+function crc32(bytes) {
+  let table = crc32.table;
+  if (!table) {
+    table = new Uint32Array(256);
+    for (let i = 0; i < 256; i += 1) {
+      let c = i;
+      for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[i] = c >>> 0;
+    }
+    crc32.table = table;
+  }
+
+  let crc = 0xffffffff;
+  bytes.forEach((byte) => {
+    crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  });
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function writeUint32(array, value) {
+  array.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
+}
+
+function writeUint16(array, value) {
+  array.push(value & 0xff, (value >>> 8) & 0xff);
+}
+
+function createZip(files) {
+  const encoder = new TextEncoder();
+  const output = [];
+  const central = [];
+  let offset = 0;
+
+  files.forEach((file) => {
+    const nameBytes = encoder.encode(file.name);
+    const dataBytes = encoder.encode(file.content);
+    const crc = crc32(dataBytes);
+
+    writeUint32(output, 0x04034b50);
+    writeUint16(output, 20);
+    writeUint16(output, 0);
+    writeUint16(output, 0);
+    writeUint16(output, 0);
+    writeUint16(output, 0);
+    writeUint32(output, crc);
+    writeUint32(output, dataBytes.length);
+    writeUint32(output, dataBytes.length);
+    writeUint16(output, nameBytes.length);
+    writeUint16(output, 0);
+    output.push(...nameBytes, ...dataBytes);
+
+    writeUint32(central, 0x02014b50);
+    writeUint16(central, 20);
+    writeUint16(central, 20);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint32(central, crc);
+    writeUint32(central, dataBytes.length);
+    writeUint32(central, dataBytes.length);
+    writeUint16(central, nameBytes.length);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint16(central, 0);
+    writeUint32(central, 0);
+    writeUint32(central, offset);
+    central.push(...nameBytes);
+
+    offset = output.length;
+  });
+
+  const centralOffset = output.length;
+  output.push(...central);
+  writeUint32(output, 0x06054b50);
+  writeUint16(output, 0);
+  writeUint16(output, 0);
+  writeUint16(output, files.length);
+  writeUint16(output, files.length);
+  writeUint32(output, central.length);
+  writeUint32(output, centralOffset);
+  writeUint16(output, 0);
+
+  return new Uint8Array(output);
+}
+
+function downloadXlsx(filename, rows) {
+  const headers = [
+    "participante",
+    "avaliador",
+    "data",
+    "tipo_linha",
+    "variavel",
+    "protocolo",
+    "unidade",
+    "medida_1",
+    "medida_2",
+    "diferenca",
+    "etm_absoluto",
+    "etm_percentual",
+    "alvo_etm_percentual",
+    "status",
+    "pmb_cm"
+  ];
+
+  const files = [
+    {
+      name: "[Content_Types].xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`
+    },
+    {
+      name: "_rels/.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+    },
+    {
+      name: "xl/workbook.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Coleta" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`
+    },
+    {
+      name: "xl/_rels/workbook.xml.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`
+    },
+    {
+      name: "xl/worksheets/sheet1.xml",
+      content: sheetXml(headers, rows)
+    }
+  ];
+
+  const bytes = createZip(files);
+  const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  let url;
+
+  if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+    const blob = new Blob([bytes], { type: mime });
+    url = URL.createObjectURL(blob);
+  } else {
+    url = `data:${mime};base64,${bytesToBase64(bytes)}`;
+  }
+
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
+  showDownloadNotice(url, filename);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
 }
 
-function rowsToCsv(headers, rows) {
-  return [
-    headers.map(escapeCsv).join(";"),
-    ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(";"))
-  ].join("\n");
-}
-
-function exportTriplicateCsv() {
-  calculateTriplicates();
-  const headers = [
-    "Módulo", "Participante", "Variável", "Protocolo", "Unidade", "Ponto anatômico", "Medida 1", "Medida 2", "Medida 3",
-    "Média", "DP", "CV%", "Amplitude", "Limite CV%", "Limite amplitude", "Classificação triplicata",
-    "Momento 1", "Momento 2", "Delta absoluto", "Delta %", "Interpretação longitudinal"
-  ];
-  const rows = triplicateResults.map((item) => ({
-    "Módulo": item.module,
-    "Participante": item.participant,
-    "Variável": item.variable,
-    "Protocolo": item.protocol,
-    "Unidade": item.unit,
-    "Ponto anatômico": item.point,
-    "Medida 1": item.measures[0],
-    "Medida 2": item.measures[1],
-    "Medida 3": item.measures[2],
-    "Média": formatNumber(item.mean),
-    "DP": formatNumber(item.sd),
-    "CV%": formatNumber(item.cv),
-    "Amplitude": formatNumber(item.amplitude),
-    "Limite CV%": formatNumber(item.cvLimit),
-    "Limite amplitude": formatNumber(item.ampLimit),
-    "Classificação triplicata": item.classification,
-    "Momento 1": item.moment1 ?? "",
-    "Momento 2": item.moment2 ?? "",
-    "Delta absoluto": item.deltaAbs !== null ? formatNumber(item.deltaAbs) : "",
-    "Delta %": item.deltaPct !== null ? formatNumber(item.deltaPct) : "",
-    "Interpretação longitudinal": item.interpretation
-  }));
-  downloadText("triplicatas-etm-antropometrico.csv", rowsToCsv(headers, rows), "text/csv;charset=utf-8");
-}
-
-function exportStudyCsv() {
-  calculateStudy();
-  const headers = [
-    "Módulo", "Variável", "Protocolo", "Unidade", "N", "Média medida 1", "Média medida 2",
-    "Diferença média", "Maior diferença absoluta", "ETM absoluto", "ETM relativo %", "Limite ETM%", "Classificação ETM"
-  ];
-  const rows = studyResults.map((item) => ({
-    "Módulo": item.module,
-    "Variável": item.variable,
-    "Protocolo": item.protocol,
-    "Unidade": item.unit,
-    "N": item.n,
-    "Média medida 1": formatNumber(item.mean1),
-    "Média medida 2": formatNumber(item.mean2),
-    "Diferença média": formatNumber(item.meanDiff),
-    "Maior diferença absoluta": formatNumber(item.maxAbsDiff),
-    "ETM absoluto": formatNumber(item.etm),
-    "ETM relativo %": formatNumber(item.etmPct),
-    "Limite ETM%": formatNumber(item.limit),
-    "Classificação ETM": item.classification
-  }));
-  downloadText("etm-classico-antropometrico.csv", rowsToCsv(headers, rows), "text/csv;charset=utf-8");
-}
-
-function exportJson() {
-  calculateTriplicates();
-  calculateStudy();
-  downloadText("etm-antropometrico.json", JSON.stringify({ triplicateResults, studyResults }, null, 2), "application/json;charset=utf-8");
-}
-
-function updateSummary() {
-  const tripLines = triplicateResults.slice(0, 5).map((item) => [
-    `${item.variable}${item.protocol ? ` · ${item.protocol}` : ""}:`,
-    `Média: ${formatNumber(item.mean)} ${item.unit}`,
-    `DP: ${formatNumber(item.sd)} ${item.unit}`,
-    `CV: ${formatNumber(item.cv)}%`,
-    `Amplitude: ${formatNumber(item.amplitude)} ${item.unit}`,
-    `Classificação: ${item.classification}`
-  ].join("\n"));
-
-  const studyLines = studyResults.slice(0, 5).map((item) => [
-    `${item.variable}${item.protocol ? ` · ${item.protocol}` : ""}:`,
-    `N: ${item.n}`,
-    `ETM absoluto: ${formatNumber(item.etm)} ${item.unit}`,
-    `ETM relativo: ${formatNumber(item.etmPct)}%`,
-    `Classificação: ${item.classification}`
-  ].join("\n"));
-
-  byId("summaryText").value = [
-    "Resumo ETM Antropométrico",
-    "",
-    "Triplicatas individuais:",
-    tripLines.length ? tripLines.join("\n\n") : "Sem triplicatas calculadas.",
-    "",
-    "ETM clássico do estudo:",
-    studyLines.length ? studyLines.join("\n\n") : "Sem ETM clássico calculado.",
-    "",
-    "Interpretação:",
-    "Mudanças menores ou iguais ao ETM devem ser interpretadas com cautela, pois podem representar erro técnico da medida."
-  ].join("\n");
-}
-
-async function copyWhatsappSummary() {
-  updateSummary();
-  const text = byId("summaryText").value;
-  try {
-    await navigator.clipboard.writeText(text);
-    alert("Resumo copiado para a área de transferência.");
-  } catch {
-    byId("summaryText").select();
-    document.execCommand("copy");
-    alert("Resumo selecionado e copiado quando permitido pelo navegador.");
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
   }
+  return btoa(binary);
 }
 
-function parseCsvLine(line) {
-  const result = [];
-  let current = "";
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (char === '"' && line[index + 1] === '"') {
-      current += '"';
-      index += 1;
-    } else if (char === '"') {
-      quoted = !quoted;
-    } else if ((char === ";" || char === ",") && !quoted) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
+function showDownloadNotice(url, filename) {
+  if (lastObjectUrl && lastObjectUrl.startsWith("blob:") && lastObjectUrl !== url) {
+    URL.revokeObjectURL(lastObjectUrl);
   }
-  result.push(current.trim());
-  return result;
+  lastObjectUrl = url;
+
+  const notice = byId("downloadNotice");
+  notice.textContent = "Download iniciado. ";
+  const link = document.createElement("a");
+  link.id = "manualDownloadLink";
+  link.href = url;
+  link.download = filename;
+  link.textContent = "Baixar Excel";
+  notice.appendChild(link);
+  notice.classList.add("visible");
 }
 
-function importCsv(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const lines = String(reader.result).split(/\r?\n/).filter(Boolean);
-    if (!lines.length) return;
-    const headers = parseCsvLine(lines[0]).map((header) => header.toLowerCase());
-    lines.slice(1).forEach((line) => {
-      const cells = parseCsvLine(line);
-      const get = (name, fallbackIndex) => {
-        const index = headers.findIndex((header) => header.includes(name));
-        return cells[index >= 0 ? index : fallbackIndex] || "";
-      };
-      const label = get("variável", 1);
-      const variable = variables.find((item) => item.label.toLowerCase() === label.toLowerCase()) || variables[0];
-      addStudyRow({
-        participant: get("participante", 0),
-        variableKey: variable.key,
-        protocol: get("protocolo", 2) || variable.protocol,
-        m1: get("medida 1", 3),
-        m2: get("medida 2", 4)
-      });
-    });
-  };
-  reader.readAsText(file);
-}
-
-function bindActions() {
-  byId("calculateTriplicates").addEventListener("click", calculateTriplicates);
-  byId("clearTriplicates").addEventListener("click", () => {
-    document.querySelectorAll("[data-trip]").forEach((input) => {
-      input.value = "";
-      input.classList.remove("discrepant");
-    });
-    triplicateResults = [];
-    renderTriplicateCards();
-    updateSummary();
+function clearAll() {
+  Object.keys(state).forEach((key) => {
+    state[key].m1 = "";
+    state[key].m2 = "";
   });
-  byId("calculateStudy").addEventListener("click", calculateStudy);
-  byId("addStudyRow").addEventListener("click", () => addStudyRow());
-  byId("clearStudyRows").addEventListener("click", () => {
-    byId("studyRows").innerHTML = "";
-    studyResults = [];
-    addStudyRow();
-    renderStudyResults();
-    renderArmComparison();
-    updateSummary();
+  document.querySelectorAll("[data-input], [data-review]").forEach((input) => {
+    input.value = "";
   });
-  byId("importCsvButton").addEventListener("click", () => byId("csvInput").click());
-  byId("csvInput").addEventListener("change", (event) => {
-    if (event.target.files[0]) importCsv(event.target.files[0]);
-  });
-  byId("exportTripCsv").addEventListener("click", exportTriplicateCsv);
-  byId("exportStudyCsv").addEventListener("click", exportStudyCsv);
-  byId("exportJson").addEventListener("click", exportJson);
-  byId("copyWhatsapp").addEventListener("click", copyWhatsappSummary);
+  byId("overrideOutOfTarget").checked = false;
+  byId("downloadNotice").classList.remove("visible");
+  byId("downloadNotice").textContent = "";
+  byId("measureTwoSection").classList.remove("active");
+  byId("resultsSection").classList.remove("active");
+  updateResults();
+  byId("measureOneSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function init() {
-  renderTabs();
-  renderTriplicateCards();
-  addStudyRow();
-  bindActions();
-  updateSummary();
+  byId("collectionDate").valueAsDate = new Date();
+  renderInputs("perimeterMeasureOne", perimeterMeasures, "1");
+  renderInputs("skinfoldMeasureOne", skinfoldMeasures, "1");
+  renderInputs("perimeterMeasureTwo", perimeterMeasures, "2");
+  renderInputs("skinfoldMeasureTwo", skinfoldMeasures, "2");
+  bindMeasureInputs();
+
+  byId("goMeasureTwo").addEventListener("click", () => {
+    revealMeasureTwo();
+    byId("measureTwoSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  byId("goResults").addEventListener("click", revealResults);
+  byId("saveExcel").addEventListener("click", saveExcel);
+  byId("clearAll").addEventListener("click", clearAll);
+  byId("targetPerimeter").addEventListener("input", updateResults);
+  byId("targetSkinfold").addEventListener("input", updateResults);
+
+  updateResults();
+  syncReviewInputs();
 }
 
 init();

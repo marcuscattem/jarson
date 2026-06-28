@@ -3,169 +3,136 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ETM Antropométrico</title>
+    <title>COLETA DE DADOS</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Ferramenta estática</p>
-        <h1>ETM Antropométrico</h1>
-      </div>
-      <p class="subtitle">Controle de triplicatas, ETM clássico do estudo e interpretação longitudinal.</p>
+      <h1>COLETA DE DADOS</h1>
     </header>
 
-    <nav class="tabs" aria-label="Seções da ferramenta">
-      <button class="tab active" type="button" data-tab="triplicatas">Triplicatas</button>
-      <button class="tab" type="button" data-tab="estudo">ETM do estudo</button>
-      <button class="tab" type="button" data-tab="comparacao">Comparação braço</button>
-      <button class="tab" type="button" data-tab="exportacao">Exportação</button>
-      <button class="tab" type="button" data-tab="instrucoes">Instruções</button>
-    </nav>
-
-    <main>
-      <section class="panel active" id="triplicatas">
+    <main class="collection">
+      <section class="card participant-card" aria-labelledby="participant-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Módulo A</p>
-            <h2>Controle de repetibilidade da triplicata</h2>
+            <p class="eyebrow">Identificação</p>
+            <h2 id="participant-title">Rodada de avaliação</h2>
           </div>
-          <div class="status-chip neutral">Não é ETM clássico</div>
+          <span class="status-chip neutral" id="completionStatus">Aguardando dados</span>
         </div>
 
         <div class="settings-grid">
           <label>
             Participante
-            <input id="tripParticipant" type="text" placeholder="Ex.: P01">
+            <input id="participant" type="text" autocomplete="off" placeholder="Ex.: P01">
           </label>
           <label>
-            CV perímetros (%)
-            <input id="limitPerimeterCv" type="number" step="0.1" value="1.0">
+            Avaliador
+            <input id="evaluator" type="text" autocomplete="off" placeholder="Ex.: Nome">
           </label>
           <label>
-            Amplitude perímetros (cm)
-            <input id="limitPerimeterAmp" type="number" step="0.1" value="0.5">
+            Data
+            <input id="collectionDate" type="date">
           </label>
-          <label>
-            CV dobras (%)
-            <input id="limitSkinfoldCv" type="number" step="0.1" value="5.0">
-          </label>
-          <label>
-            Amplitude dobras (mm)
-            <input id="limitSkinfoldAmp" type="number" step="0.1" value="2.0">
-          </label>
-        </div>
-
-        <div class="toolbar">
-          <button class="primary" type="button" id="calculateTriplicates">Calcular</button>
-          <button type="button" id="clearTriplicates">Limpar</button>
-        </div>
-
-        <div class="card-grid" id="triplicateCards"></div>
-      </section>
-
-      <section class="panel" id="estudo">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Módulo B</p>
-            <h2>ETM clássico do estudo</h2>
-          </div>
-          <div class="status-chip neutral">ETM = sqrt(Σd² / 2N)</div>
-        </div>
-
-        <div class="settings-grid compact">
           <label>
             Limite ETM perímetros (%)
-            <input id="limitEtmPerimeter" type="number" step="0.1" value="1.0">
+            <input id="targetPerimeter" type="number" step="0.1" value="1.0">
           </label>
           <label>
-            Limite ETM dobras (%)
-            <input id="limitEtmSkinfold" type="number" step="0.1" value="5.0">
+            Limite ETM dobras cutâneas (%)
+            <input id="targetSkinfold" type="number" step="0.1" value="5.0">
           </label>
         </div>
+      </section>
 
-        <div class="table-wrap">
-          <table id="studyTable">
+      <section class="step card active" id="measureOneSection" aria-labelledby="measure-one-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Etapa 1</p>
+            <h2 id="measure-one-title">Medida 1</h2>
+          </div>
+          <span class="step-number">1</span>
+        </div>
+        <div class="measure-layout">
+          <div>
+            <h3>Perímetros corporais <span>cm</span></h3>
+            <div class="field-list" id="perimeterMeasureOne"></div>
+          </div>
+          <div class="skin-card">
+            <h3>Dobras cutâneas <span>mm</span></h3>
+            <div class="field-list" id="skinfoldMeasureOne"></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="primary" type="button" id="goMeasureTwo">Avançar para medida 2</button>
+        </div>
+      </section>
+
+      <section class="step card" id="measureTwoSection" aria-labelledby="measure-two-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Etapa 2</p>
+            <h2 id="measure-two-title">Medida 2</h2>
+          </div>
+          <span class="step-number">2</span>
+        </div>
+        <div class="measure-layout">
+          <div>
+            <h3>Perímetros corporais <span>cm</span></h3>
+            <div class="field-list" id="perimeterMeasureTwo"></div>
+          </div>
+          <div class="skin-card">
+            <h3>Dobras cutâneas <span>mm</span></h3>
+            <div class="field-list" id="skinfoldMeasureTwo"></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="primary" type="button" id="goResults">Ver resultados</button>
+        </div>
+      </section>
+
+      <section class="step card" id="resultsSection" aria-labelledby="results-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Etapa 3</p>
+            <h2 id="results-title">ETM final</h2>
+          </div>
+          <span class="step-number">3</span>
+        </div>
+
+        <div class="pmb-grid" id="muscleResults"></div>
+
+        <div class="review-wrap">
+          <table>
             <thead>
               <tr>
-                <th>Participante</th>
                 <th>Variável</th>
-                <th>Protocolo</th>
+                <th>Unidade</th>
                 <th>Medida 1</th>
                 <th>Medida 2</th>
-                <th>Unidade</th>
-                <th></th>
+                <th>Diferença</th>
+                <th>ETM</th>
+                <th>ETM%</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody id="studyRows"></tbody>
+            <tbody id="reviewRows"></tbody>
           </table>
         </div>
 
-        <div class="toolbar">
-          <button class="primary" type="button" id="calculateStudy">Calcular</button>
-          <button type="button" id="addStudyRow">Adicionar linha</button>
-          <button type="button" id="clearStudyRows">Limpar</button>
-          <button type="button" id="importCsvButton">Importar CSV</button>
-          <input class="visually-hidden" id="csvInput" type="file" accept=".csv,text/csv">
-        </div>
-
-        <div class="results-list" id="studyResults"></div>
-      </section>
-
-      <section class="panel" id="comparacao">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Braço</p>
-            <h2>ISAK vs Lohman</h2>
-          </div>
-        </div>
-        <div id="armComparison" class="comparison-empty">
-          Calcule o ETM clássico com linhas de braço ISAK e braço Lohman para ver a comparação.
-        </div>
-      </section>
-
-      <section class="panel" id="exportacao">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Saída</p>
-            <h2>Exportação e resumo</h2>
-          </div>
-        </div>
-        <div class="toolbar">
-          <button class="primary" type="button" id="exportTripCsv">Exportar CSV triplicatas</button>
-          <button type="button" id="exportStudyCsv">Exportar CSV ETM</button>
-          <button type="button" id="exportJson">Exportar JSON</button>
-          <button type="button" id="copyWhatsapp">Copiar resumo para WhatsApp</button>
-        </div>
-        <label class="summary-box">
-          Resumo
-          <textarea id="summaryText" rows="14" readonly></textarea>
+        <label class="finalize-check" id="overrideBox">
+          <input id="overrideOutOfTarget" type="checkbox">
+          Finalizar a avaliação mesmo com ETM fora de alvo
         </label>
-      </section>
 
-      <section class="panel prose" id="instrucoes">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Uso</p>
-            <h2>Instruções</h2>
-          </div>
+        <div class="download-notice" id="downloadNotice" aria-live="polite"></div>
+
+        <div class="toolbar sticky-actions">
+          <button class="primary" type="button" id="saveExcel">Salvar Excel</button>
+          <button type="button" id="clearAll">Limpar rodada</button>
         </div>
-        <ol>
-          <li>A triplicata individual serve para avaliar a consistência das medidas repetidas no mesmo indivíduo.</li>
-          <li>O ETM clássico do estudo deve ser calculado com vários participantes medidos duas vezes.</li>
-          <li>A fórmula do ETM clássico é: ETM = sqrt(Σd² / 2N).</li>
-          <li>Mudanças longitudinais devem ser interpretadas preferencialmente usando o ETM clássico.</li>
-          <li>Quando a mudança for ≤ ETM, ela é compatível com erro técnico; quando for &gt; ETM e ≤ 2×ETM, é uma possível mudança real; quando for &gt; 2×ETM, é mudança provavelmente real.</li>
-          <li>Os pontos anatômicos devem seguir o protocolo escolhido, como ISAK ou Lohman.</li>
-          <li>Os limites de aceitabilidade são provisórios e podem ser ajustados pelo pesquisador conforme o protocolo adotado.</li>
-        </ol>
       </section>
     </main>
-
-    <footer>
-      <span>ETM Antropométrico</span>
-      <span>HTML, CSS e JavaScript puro</span>
-    </footer>
 
     <script src="script.js"></script>
   </body>
