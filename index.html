@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ETM Antropométrico</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Ferramenta estática</p>
+        <h1>ETM Antropométrico</h1>
+      </div>
+      <p class="subtitle">Controle de triplicatas, ETM clássico do estudo e interpretação longitudinal.</p>
+    </header>
+
+    <nav class="tabs" aria-label="Seções da ferramenta">
+      <button class="tab active" type="button" data-tab="triplicatas">Triplicatas</button>
+      <button class="tab" type="button" data-tab="estudo">ETM do estudo</button>
+      <button class="tab" type="button" data-tab="comparacao">Comparação braço</button>
+      <button class="tab" type="button" data-tab="exportacao">Exportação</button>
+      <button class="tab" type="button" data-tab="instrucoes">Instruções</button>
+    </nav>
+
+    <main>
+      <section class="panel active" id="triplicatas">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Módulo A</p>
+            <h2>Controle de repetibilidade da triplicata</h2>
+          </div>
+          <div class="status-chip neutral">Não é ETM clássico</div>
+        </div>
+
+        <div class="settings-grid">
+          <label>
+            Participante
+            <input id="tripParticipant" type="text" placeholder="Ex.: P01">
+          </label>
+          <label>
+            CV perímetros (%)
+            <input id="limitPerimeterCv" type="number" step="0.1" value="1.0">
+          </label>
+          <label>
+            Amplitude perímetros (cm)
+            <input id="limitPerimeterAmp" type="number" step="0.1" value="0.5">
+          </label>
+          <label>
+            CV dobras (%)
+            <input id="limitSkinfoldCv" type="number" step="0.1" value="5.0">
+          </label>
+          <label>
+            Amplitude dobras (mm)
+            <input id="limitSkinfoldAmp" type="number" step="0.1" value="2.0">
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button class="primary" type="button" id="calculateTriplicates">Calcular</button>
+          <button type="button" id="clearTriplicates">Limpar</button>
+        </div>
+
+        <div class="card-grid" id="triplicateCards"></div>
+      </section>
+
+      <section class="panel" id="estudo">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Módulo B</p>
+            <h2>ETM clássico do estudo</h2>
+          </div>
+          <div class="status-chip neutral">ETM = sqrt(Σd² / 2N)</div>
+        </div>
+
+        <div class="settings-grid compact">
+          <label>
+            Limite ETM perímetros (%)
+            <input id="limitEtmPerimeter" type="number" step="0.1" value="1.0">
+          </label>
+          <label>
+            Limite ETM dobras (%)
+            <input id="limitEtmSkinfold" type="number" step="0.1" value="5.0">
+          </label>
+        </div>
+
+        <div class="table-wrap">
+          <table id="studyTable">
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Variável</th>
+                <th>Protocolo</th>
+                <th>Medida 1</th>
+                <th>Medida 2</th>
+                <th>Unidade</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="studyRows"></tbody>
+          </table>
+        </div>
+
+        <div class="toolbar">
+          <button class="primary" type="button" id="calculateStudy">Calcular</button>
+          <button type="button" id="addStudyRow">Adicionar linha</button>
+          <button type="button" id="clearStudyRows">Limpar</button>
+          <button type="button" id="importCsvButton">Importar CSV</button>
+          <input class="visually-hidden" id="csvInput" type="file" accept=".csv,text/csv">
+        </div>
+
+        <div class="results-list" id="studyResults"></div>
+      </section>
+
+      <section class="panel" id="comparacao">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Braço</p>
+            <h2>ISAK vs Lohman</h2>
+          </div>
+        </div>
+        <div id="armComparison" class="comparison-empty">
+          Calcule o ETM clássico com linhas de braço ISAK e braço Lohman para ver a comparação.
+        </div>
+      </section>
+
+      <section class="panel" id="exportacao">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Saída</p>
+            <h2>Exportação e resumo</h2>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="primary" type="button" id="exportTripCsv">Exportar CSV triplicatas</button>
+          <button type="button" id="exportStudyCsv">Exportar CSV ETM</button>
+          <button type="button" id="exportJson">Exportar JSON</button>
+          <button type="button" id="copyWhatsapp">Copiar resumo para WhatsApp</button>
+        </div>
+        <label class="summary-box">
+          Resumo
+          <textarea id="summaryText" rows="14" readonly></textarea>
+        </label>
+      </section>
+
+      <section class="panel prose" id="instrucoes">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Uso</p>
+            <h2>Instruções</h2>
+          </div>
+        </div>
+        <ol>
+          <li>A triplicata individual serve para avaliar a consistência das medidas repetidas no mesmo indivíduo.</li>
+          <li>O ETM clássico do estudo deve ser calculado com vários participantes medidos duas vezes.</li>
+          <li>A fórmula do ETM clássico é: ETM = sqrt(Σd² / 2N).</li>
+          <li>Mudanças longitudinais devem ser interpretadas preferencialmente usando o ETM clássico.</li>
+          <li>Quando a mudança for ≤ ETM, ela é compatível com erro técnico; quando for &gt; ETM e ≤ 2×ETM, é uma possível mudança real; quando for &gt; 2×ETM, é mudança provavelmente real.</li>
+          <li>Os pontos anatômicos devem seguir o protocolo escolhido, como ISAK ou Lohman.</li>
+          <li>Os limites de aceitabilidade são provisórios e podem ser ajustados pelo pesquisador conforme o protocolo adotado.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <span>ETM Antropométrico</span>
+      <span>HTML, CSS e JavaScript puro</span>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
