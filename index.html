@@ -214,6 +214,54 @@
       font-weight: 800;
     }
 
+    .review-row {
+      display: grid;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f4f2;
+    }
+
+    .review-row:last-child { border-bottom: 0; }
+
+    .review-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .review-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .review-input-wrap {
+      display: grid;
+      gap: 5px;
+    }
+
+    .review-input-wrap span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .review-input {
+      width: 100%;
+      min-height: 42px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      background: #f9fbfa;
+      color: var(--ink);
+      padding: 8px 10px;
+      text-align: right;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
     .hint {
       padding: 4px 2px 12px;
       color: var(--muted);
@@ -629,17 +677,34 @@
           <div class="pmb"><span>PMB · ISAK</span><strong>${fmt(pmbI)}</strong><div class="field-sub">cm</div></div>
         </div>
         <section class="card">
-          <div class="card-head">ETM por variável</div>
+          <div class="card-head">Revisar medidas e ETM</div>
           ${allResults.map(item => {
             const cls = item.status === "ok" ? "ok" : item.status === "bad" ? "bad" : item.status === "partial" ? "warn" : "empty";
             const txt = item.status === "empty" ? "Sem dados" : item.status === "partial" ? "Incompleto" : item.label;
+            const values = state.measures[item.def.key];
             return `
-              <div class="field-row">
-                <div class="field-copy">
-                  <div class="field-title">${escapeHtml(item.def.label)}</div>
-                  <div class="field-sub">${item.etm !== undefined ? `ETM ${fmt(item.etm)} ${item.def.unit} · ${fmt(item.etmPct)}%` : "-"}</div>
+              <div class="review-row">
+                <div class="review-top">
+                  <div class="field-copy">
+                    <div class="field-title">${escapeHtml(item.def.label)}</div>
+                    <div class="field-sub">${item.etm !== undefined ? `ETM ${fmt(item.etm)} ${item.def.unit} · ${fmt(item.etmPct)}% · média ${fmt(item.avg)} ${item.def.unit}` : "Digite pelo menos duas medidas para calcular"}</div>
+                  </div>
+                  <span class="status ${cls}">${txt}</span>
                 </div>
-                <span class="status ${cls}">${txt}</span>
+                <div class="review-inputs">
+                  <label class="review-input-wrap">
+                    <span>M1 · ${item.def.unit}</span>
+                    <input class="review-input" inputmode="decimal" data-measure="${item.def.key}" data-round="m1" value="${escapeHtml(values.m1)}" placeholder="-">
+                  </label>
+                  <label class="review-input-wrap">
+                    <span>M2 · ${item.def.unit}</span>
+                    <input class="review-input" inputmode="decimal" data-measure="${item.def.key}" data-round="m2" value="${escapeHtml(values.m2)}" placeholder="-">
+                  </label>
+                  <label class="review-input-wrap">
+                    <span>M3 · ${item.def.unit}</span>
+                    <input class="review-input" inputmode="decimal" data-measure="${item.def.key}" data-round="m3" value="${escapeHtml(values.m3)}" placeholder="-">
+                  </label>
+                </div>
               </div>
             `;
           }).join("")}
@@ -687,6 +752,7 @@
         }
         if (el.dataset.measure) {
           state.measures[el.dataset.measure][el.dataset.round] = el.value;
+          if (state.step === STEPS.length - 1) renderKeepingFocus(el);
         }
       });
 
@@ -704,6 +770,21 @@
       document.addEventListener("change", event => {
         if (event.target.id === "xlsxInput") importExcelFiles([...event.target.files]);
       });
+    }
+
+    function renderKeepingFocus(el) {
+      const focusState = {
+        measure: el.dataset.measure,
+        round: el.dataset.round,
+        start: el.selectionStart,
+        end: el.selectionEnd
+      };
+      render();
+      const next = document.querySelector(`[data-measure="${focusState.measure}"][data-round="${focusState.round}"]`);
+      if (next) {
+        next.focus();
+        next.setSelectionRange(focusState.start, focusState.end);
+      }
     }
 
     function goTo(step) {
